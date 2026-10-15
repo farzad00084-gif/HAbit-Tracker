@@ -1,0 +1,249 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+<title>Paper Trail — a scrapbook for your habits</title>
+<meta name="description" content="A scrapbook-style habit tracker. Add rows for habits, add columns for days, stamp the boxes, watch the chart grow. Everything is saved locally, forever." />
+<meta name="theme-color" content="#EFE7DA" />
+
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,300..900;1,9..144,300..900&family=DM+Sans:ital,opsz,wght@0,9..40,300..700;1,9..40,300..700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="styles.css" />
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>&#128221;</text></svg>" />
+</head>
+<body>
+
+<div class="grain" aria-hidden="true"></div>
+<div class="vignette" aria-hidden="true"></div>
+
+<!-- ============================== MASTHEAD ============================== -->
+<header class="masthead">
+  <div class="masthead-inner">
+    <div class="masthead-left">
+      <div class="kicker"><span class="dot"></span> vol. <span id="volNo">01</span> · <span id="mastDate">—</span></div>
+      <h1 class="wordmark">Paper<span>Trail</span></h1>
+      <p class="tagline">a scrapbook for the habits <em>you're</em> actually building</p>
+    </div>
+
+    <div class="masthead-right">
+      <div class="tape tape-a" aria-hidden="true"></div>
+      <div class="tape tape-b" aria-hidden="true"></div>
+      <p class="manifesto">
+        every mark you stamp is written to this browser and never leaves it.
+        no account. no cloud. no forgetting.
+      </p>
+      <div class="save-pill" id="savePill" role="status" aria-live="polite">
+        <span class="save-dot"></span><span id="saveText">saved</span>
+      </div>
+    </div>
+  </div>
+</header>
+
+<main>
+
+  <!-- ============================== STATS ============================== -->
+  <section class="stats" aria-label="Your numbers at a glance">
+
+    <article class="stat stat-ring tilt-l">
+      <span class="tape tape-s" aria-hidden="true"></span>
+      <div class="ring">
+        <svg viewBox="0 0 100 100" aria-hidden="true">
+          <circle class="ring-track" cx="50" cy="50" r="41"></circle>
+          <circle class="ring-fill" id="todayRing" cx="50" cy="50" r="41"></circle>
+        </svg>
+        <div class="ring-label">
+          <strong id="todayPct">0%</strong>
+          <span>today</span>
+        </div>
+      </div>
+      <p class="stat-note" id="todayNote">nothing stamped yet</p>
+    </article>
+
+    <article class="stat tilt-r">
+      <span class="stat-icon">🔥</span>
+      <p class="stat-label">Longest active streak</p>
+      <p class="stat-value"><span id="bestStreak">0</span><small>days</small></p>
+      <p class="stat-note" id="streakWho">—</p>
+    </article>
+
+    <article class="stat tilt-r2">
+      <span class="stat-icon">✦</span>
+      <p class="stat-label">Stamps collected</p>
+      <p class="stat-value"><span id="totalStamps">0</span></p>
+      <p class="stat-note" id="stampsNote">all time</p>
+    </article>
+
+    <article class="stat tilt-l2">
+      <span class="stat-icon">◷</span>
+      <p class="stat-label">Days on record</p>
+      <p class="stat-value"><span id="daysTracked">0</span></p>
+      <p class="stat-note"><span id="habitCount">0</span> habits in the book</p>
+    </article>
+
+  </section>
+
+  <!-- ============================== BOARD ============================== -->
+  <section class="board card" aria-label="Habit grid">
+
+    <div class="board-head">
+      <div class="board-title">
+        <h2>The Board</h2>
+        <p>rows are habits · columns are days · click or drag to stamp</p>
+      </div>
+
+      <div class="board-tools">
+        <div class="seg" role="group" aria-label="Chart range">
+          <button class="seg-btn is-on" data-range="7">7d</button>
+          <button class="seg-btn" data-range="14">14d</button>
+          <button class="seg-btn" data-range="30">30d</button>
+          <button class="seg-btn" data-range="0">all</button>
+        </div>
+
+        <button class="btn btn-ghost" id="addDayBtn" aria-haspopup="dialog" aria-expanded="false">
+          <span class="btn-ico">＋</span> Add a column
+        </button>
+        <button class="btn btn-primary" id="addHabitBtn">
+          <span class="btn-ico">✦</span> New habit
+        </button>
+        <button class="btn btn-icon" id="dataBtn" aria-haspopup="dialog" aria-expanded="false" title="Your data" aria-label="Your data">
+          <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round">
+            <ellipse cx="12" cy="6" rx="8" ry="3"></ellipse>
+            <path d="M4 6v6c0 1.7 3.6 3 8 3s8-1.3 8-3V6"></path>
+            <path d="M4 12v6c0 1.7 3.6 3 8 3s8-1.3 8-3v-6"></path>
+          </svg>
+        </button>
+      </div>
+    </div>
+
+    <div class="grid-scroll" id="gridScroll" tabindex="0" aria-label="Habit grid, scrollable">
+      <table class="grid" id="grid">
+        <thead id="gridHead"></thead>
+        <tbody id="gridBody"></tbody>
+        <tfoot id="gridFoot"></tfoot>
+      </table>
+    </div>
+
+    <p class="hint"><b>Tip</b> — press and drag across the boxes to stamp a whole week at once. Dates in the future are dimmed so you can plan ahead.</p>
+  </section>
+
+  <!-- ============================== CHARTS ============================== -->
+  <section class="charts" aria-label="Progress charts">
+
+    <article class="card chart-card tilt-l">
+      <span class="tape tape-m1" aria-hidden="true"></span>
+      <header class="chart-head">
+        <div>
+          <h3>Consistency</h3>
+          <p id="trendSub">share of habits stamped, per day</p>
+        </div>
+        <span class="chart-badge" id="trendBadge">—</span>
+      </header>
+      <div class="chart-body" id="trendChart"></div>
+    </article>
+
+    <article class="card chart-card tilt-r">
+      <header class="chart-head">
+        <div>
+          <h3>How each habit is doing</h3>
+          <p id="barsSub">completion rate over the selected range</p>
+        </div>
+      </header>
+      <div class="chart-body bars" id="barsChart"></div>
+    </article>
+
+    <article class="card chart-card wide">
+      <header class="chart-head">
+        <div>
+          <h3>The Calendar Wall</h3>
+          <p>one block per habit, one square per day · <span id="heatWeeks">a year</span></p>
+        </div>
+      </header>
+      <div class="chart-body heat-wrap" id="heatChart"></div>
+    </article>
+
+  </section>
+
+  <footer class="foot">
+    <p>Paper Trail · everything lives in <code>localStorage</code> on this device. Download a backup now and then so it truly never gets forgotten.</p>
+  </footer>
+
+</main>
+
+<!-- ============================== POPOVERS / MODALS ============================== -->
+
+<!-- Add a column (day) -->
+<div class="popover" id="addDayPop" role="dialog" aria-label="Add a column" hidden>
+  <h4>Add a column</h4>
+  <p class="pop-sub">A column is one day. Pick a date and it joins the board.</p>
+  <label class="field">
+    <span>Date</span>
+    <input type="date" id="dayInput" />
+  </label>
+  <div class="chips">
+    <button class="chip" data-quick="1">tomorrow</button>
+    <button class="chip" data-quick="7">next week</button>
+    <button class="chip" data-quick="30">in a month</button>
+    <button class="chip" data-quick="-1">yesterday</button>
+  </div>
+  <div class="pop-actions">
+    <button class="btn btn-ghost" data-close>cancel</button>
+    <button class="btn btn-primary" id="dayConfirm">Add column</button>
+  </div>
+</div>
+
+<!-- Data menu -->
+<div class="popover pop-right" id="dataPop" role="dialog" aria-label="Your data" hidden>
+  <h4>Your data</h4>
+  <p class="pop-sub" id="dataSub">—</p>
+  <div class="stack">
+    <button class="btn btn-ghost" id="exportBtn">↓ Download backup (.json)</button>
+    <button class="btn btn-ghost" id="importBtn">↑ Restore from backup</button>
+    <button class="btn btn-ghost" id="demoBtn">✦ Load demo data</button>
+    <button class="btn btn-danger" id="wipeBtn">✕ Erase everything</button>
+  </div>
+  <p class="fine">Backups are plain text JSON. Keep them in Drive/Dropbox and your history is safe forever.</p>
+  <input type="file" id="importFile" accept="application/json,.json" hidden />
+</div>
+
+<!-- Add / edit habit -->
+<div class="scrim" id="scrim" hidden></div>
+<div class="modal" id="habitModal" role="dialog" aria-modal="true" aria-labelledby="habitModalTitle" hidden>
+  <span class="tape tape-modal" id="modalTape" aria-hidden="true"></span>
+  <h4 id="habitModalTitle">Add a habit</h4>
+  <p class="pop-sub">Give it a name, pick a sticker, pick a colour. It becomes a new row.</p>
+
+  <label class="field">
+    <span>What are you tracking?</span>
+    <input type="text" id="habitName" maxlength="42" placeholder="e.g. Drink 2L water" autocomplete="off" />
+  </label>
+
+  <div class="field">
+    <span>Sticker</span>
+    <div class="emoji-grid" id="emojiGrid"></div>
+  </div>
+
+  <div class="field">
+    <span>Colour</span>
+    <div class="swatches" id="swatches"></div>
+  </div>
+
+  <div class="preview" id="habitPreview">
+    <span class="pv-emoji">✦</span>
+    <span class="pv-name">Your new habit</span>
+    <span class="pv-streak">0d</span>
+  </div>
+
+  <div class="pop-actions">
+    <button class="btn btn-ghost" data-close>cancel</button>
+    <button class="btn btn-primary" id="habitConfirm">Add row</button>
+  </div>
+</div>
+
+<div class="tooltip" id="tooltip" role="tooltip" hidden></div>
+<div class="toast" id="toast" role="status" aria-live="polite" hidden></div>
+
+<script src="app.js"></script>
+</body>
+</html>
