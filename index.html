@@ -5,7 +5,22 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
 <title>Paper Trail — a scrapbook for your habits</title>
 <meta name="description" content="A scrapbook-style habit tracker. Add rows for habits, add columns for days, stamp the boxes, watch the chart grow. Everything is saved locally, forever." />
-<meta name="theme-color" content="#EFE7DA" />
+<meta name="theme-color" content="#F2EDE3" media="(prefers-color-scheme: light)" />
+<meta name="theme-color" content="#121110" media="(prefers-color-scheme: dark)" />
+
+<script>
+  /* Resolve the theme before first paint so there is no flash of the wrong
+     palette. Explicit choice wins; otherwise follow the OS. */
+  (function () {
+    try {
+      var saved = localStorage.getItem("papertrail.theme");
+      var sys = window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light";
+      document.documentElement.dataset.theme = saved === "light" || saved === "dark" ? saved : sys;
+    } catch (e) {
+      document.documentElement.dataset.theme = "light";
+    }
+  })();
+</script>
 
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -28,12 +43,15 @@
     </div>
 
     <div class="masthead-right">
-      <div class="tape tape-a" aria-hidden="true"></div>
-      <div class="tape tape-b" aria-hidden="true"></div>
-      <p class="manifesto">
-        every mark you stamp is written to this browser and never leaves it.
-        no account. no cloud. no forgetting.
-      </p>
+      <button class="theme-toggle" id="themeToggle" type="button" aria-label="Switch to dark mode" title="Switch theme">
+        <svg class="ic-sun" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true">
+          <circle cx="12" cy="12" r="4.2"></circle>
+          <path d="M12 2.6v2.2M12 19.2v2.2M4.2 4.2l1.6 1.6M18.2 18.2l1.6 1.6M2.6 12h2.2M19.2 12h2.2M4.2 19.8l1.6-1.6M18.2 5.8l1.6-1.6"></path>
+        </svg>
+        <svg class="ic-moon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <path d="M20.5 14.3A8.6 8.6 0 0 1 9.7 3.5a8.6 8.6 0 1 0 10.8 10.8Z"></path>
+        </svg>
+      </button>
       <div class="save-pill" id="savePill" role="status" aria-live="polite">
         <span class="save-dot"></span><span id="saveText">saved</span>
       </div>
@@ -46,36 +64,40 @@
   <!-- ============================== STATS ============================== -->
   <section class="stats" aria-label="Your numbers at a glance">
 
-    <article class="stat stat-ring tilt-l">
-      <span class="tape tape-s" aria-hidden="true"></span>
-      <div class="ring">
-        <svg viewBox="0 0 100 100" aria-hidden="true">
-          <circle class="ring-track" cx="50" cy="50" r="41"></circle>
-          <circle class="ring-fill" id="todayRing" cx="50" cy="50" r="41"></circle>
-        </svg>
-        <div class="ring-label">
-          <strong id="todayPct">0%</strong>
-          <span>today</span>
+    <article class="stat stat-ring">
+      <div class="ring-row">
+        <div class="ring" id="todayRingWrap">
+          <svg viewBox="0 0 100 100" aria-hidden="true">
+            <circle class="ring-track" cx="50" cy="50" r="41"></circle>
+            <circle class="ring-fill" id="todayRing" cx="50" cy="50" r="41"></circle>
+          </svg>
+          <div class="ring-label">
+            <strong id="todayPct">0%</strong>
+            <span>today</span>
+          </div>
+        </div>
+        <div>
+          <p class="stat-label">Day progress</p>
+          <p class="stat-note" id="todayNote">nothing stamped yet</p>
         </div>
       </div>
-      <p class="stat-note" id="todayNote">nothing stamped yet</p>
     </article>
 
-    <article class="stat tilt-r">
+    <article class="stat">
       <span class="stat-icon">🔥</span>
       <p class="stat-label">Longest active streak</p>
       <p class="stat-value"><span id="bestStreak">0</span><small>days</small></p>
       <p class="stat-note" id="streakWho">—</p>
     </article>
 
-    <article class="stat tilt-r2">
+    <article class="stat">
       <span class="stat-icon">✦</span>
       <p class="stat-label">Stamps collected</p>
       <p class="stat-value"><span id="totalStamps">0</span></p>
       <p class="stat-note" id="stampsNote">all time</p>
     </article>
 
-    <article class="stat tilt-l2">
+    <article class="stat">
       <span class="stat-icon">◷</span>
       <p class="stat-label">Days on record</p>
       <p class="stat-value"><span id="daysTracked">0</span></p>
@@ -131,19 +153,18 @@
   <!-- ============================== CHARTS ============================== -->
   <section class="charts" aria-label="Progress charts">
 
-    <article class="card chart-card tilt-l">
-      <span class="tape tape-m1" aria-hidden="true"></span>
+    <article class="card chart-card">
       <header class="chart-head">
         <div>
           <h3>Consistency</h3>
-          <p id="trendSub">share of habits stamped, per day</p>
+          <p id="trendSub">share of habits stamped per day</p>
         </div>
         <span class="chart-badge" id="trendBadge">—</span>
       </header>
       <div class="chart-body" id="trendChart"></div>
     </article>
 
-    <article class="card chart-card tilt-r">
+    <article class="card chart-card">
       <header class="chart-head">
         <div>
           <h3>How each habit is doing</h3>
@@ -166,7 +187,7 @@
   </section>
 
   <footer class="foot">
-    <p>Paper Trail · everything lives in <code>localStorage</code> on this device. Download a backup now and then so it truly never gets forgotten.</p>
+    <p>Every stamp is written to <code>localStorage</code> on this device — no account, no cloud, nothing sent anywhere. Download a backup now and then so it truly never gets forgotten.</p>
   </footer>
 
 </main>
@@ -210,7 +231,6 @@
 <!-- Add / edit habit -->
 <div class="scrim" id="scrim" hidden></div>
 <div class="modal" id="habitModal" role="dialog" aria-modal="true" aria-labelledby="habitModalTitle" hidden>
-  <span class="tape tape-modal" id="modalTape" aria-hidden="true"></span>
   <h4 id="habitModalTitle">Add a habit</h4>
   <p class="pop-sub">Give it a name, pick a sticker, pick a colour. It becomes a new row.</p>
 
