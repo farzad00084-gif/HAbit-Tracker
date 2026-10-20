@@ -112,7 +112,8 @@
     <div class="board-head">
       <div class="board-title">
         <h2>The Board</h2>
-        <p>rows are habits · columns are days · click or drag to stamp</p>
+        <p class="d-only">rows are habits · columns are days · click or drag to stamp</p>
+        <p class="m-only">pick a day, then tap a habit to stamp it</p>
       </div>
 
       <div class="board-tools">
@@ -147,7 +148,28 @@
       </table>
     </div>
 
-    <p class="hint"><b>Tip</b> — press and drag across the boxes to stamp a whole week at once. Dates in the future are dimmed so you can plan ahead.</p>
+    <!-- ===== Mobile: one day at a time, big touch targets ===== -->
+    <div class="mobile-board" id="mobileBoard" aria-label="Habit checklist for the selected day">
+
+      <div class="mob-head">
+        <div class="mob-headtext">
+          <p class="mob-date" id="mobDate">—</p>
+          <p class="mob-sub" id="mobSub">—</p>
+        </div>
+        <button class="mob-today" id="mobToday" type="button">today</button>
+      </div>
+
+      <div class="mday-strip" id="mDayStrip" role="group" aria-label="Choose a day"></div>
+
+      <div class="mhabit-list" id="mHabitList"></div>
+
+      <button class="madd" id="mAddHabit" type="button">
+        <span class="madd-plus">＋</span> New habit
+      </button>
+    </div>
+
+    <p class="hint d-only"><b>Tip</b> — press and drag across the boxes to stamp a whole week at once. Dates in the future are dimmed so you can plan ahead.</p>
+    <p class="hint m-only"><b>Tip</b> — every tap saves instantly. Future days are dimmed, so you can plan ahead.</p>
   </section>
 
   <!-- ============================== CHARTS ============================== -->
@@ -258,6 +280,17 @@
   <div class="pop-actions">
     <button class="btn btn-ghost" data-close>cancel</button>
     <button class="btn btn-primary" id="habitConfirm">Add row</button>
+  </div>
+</div>
+
+<div class="popover" id="habitMenuPop" role="dialog" aria-label="Habit options" hidden>
+  <h4 id="habitMenuTitle">Habit</h4>
+  <p class="pop-sub">Everything about it lives on this device.</p>
+  <div class="stack">
+    <button class="btn btn-danger" id="habitMenuDelete">✕ Remove this habit</button>
+  </div>
+  <div class="pop-actions">
+    <button class="btn btn-ghost" data-close>cancel</button>
   </div>
 </div>
 

@@ -32,6 +32,26 @@ no flash of the wrong palette on load.
 Both themes are contrast-checked: every text and UI colour in the app clears WCAG AA
 (4.5:1 body, 3:1 large text and UI borders) on its actual painted background.
 
+## On a phone
+
+Below 640px the wide table is replaced by a day-at-a-time checklist. A 212px sticky name
+column plus 30px cells simply doesn't survive a 390px screen — three days fit, and every box
+is under the 44px touch minimum — so the mobile view flips the axis instead:
+
+- a horizontally scrollable date strip, each chip carrying a thin completion bar
+- one full-width row per habit, ~62px tall, with a 46px stamp button
+- tap anywhere on a row to stamp it; the `⋯` button removes a habit
+- the board is reordered **above** the stat cards, so habits are visible without scrolling
+- every control is at least 44×44px, and inputs are 16px so iOS doesn't zoom on focus
+- popovers become bottom sheets, inside thumb reach
+
+<img src="docs/preview-mobile.png" alt="mobile checklist" width="320">
+
+Both views read and write the same state — there is no separate mobile data path, only a
+separate renderer. `renderMobile()` is driven by the same `doRender()` and `applyCell()`
+calls as the table, so a stamp made on a phone appears in the desktop grid and in every
+chart immediately.
+
 ## What it does
 
 **Add a row (a habit)** — the `+ New habit` button, or `+ Add a row` at the bottom of the
@@ -105,6 +125,9 @@ A few deliberate choices:
   card shrank its 9px axis labels to roughly 6px.
 - **Space, radius and motion scales** are tokens on a 4px base, so spacing is consistent
   rather than eyeballed.
+- **One model, two renderers.** The mobile checklist isn't a separate page or a media-query
+  hack on the table — it reads the same `S` object and writes through the same `applyCell()`.
+  Only layout is duplicated, never state or persistence.
 
 ### Files
 

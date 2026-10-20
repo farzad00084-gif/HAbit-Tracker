@@ -536,6 +536,155 @@
     if (stickRight) scroller.scrollLeft = scroller.scrollWidth;
   }
 
+  /* ---------------------------------------------------------
+     6b. Mobile checklist
+
+     Below 640px the table stops working: a 212px sticky name column plus
+     30px cells leaves two or three days visible and every target is under
+     the 44px touch minimum. This view keeps the same model and flips the
+     axis instead — choose a day, then tap whole rows.
+     --------------------------------------------------------- */
+  let mobDay = null; // the day currently being ticked off
+
+  function mobStats(k) {
+    const total = S.habits.length;
+    let done = 0;
+    S.habits.forEach((h) => {
+      if (isDone(k, h.id)) done++;
+    });
+    return { done, total, pct: total ? Math.round((done / total) * 100) : 0 };
+  }
+
+  /** scrollLeft that centres the chosen chip without moving the page */
+  function mobScrollTarget(strip) {
+    const on = strip.querySelector(".mday.is-on");
+    if (!on || !strip.offsetParent) return strip.scrollLeft;
+    const a = on.getBoundingClientRect();
+    const b = strip.getBoundingClientRect();
+    return Math.max(
+      0,
+      strip.scrollLeft + (a.left - b.left) - (b.width - a.width) / 2,
+    );
+  }
+
+  function renderMobile() {
+    const strip = $("#mDayStrip");
+    const list = $("#mHabitList");
+    if (!strip || !list) return;
+
+    const cols = sortedCols();
+
+    if (!cols.length || !S.habits.length) {
+      $("#mobDate").textContent = "Blank page";
+      $("#mobSub").textContent = "nothing tracked yet";
+      strip.innerHTML = "";
+      list.innerHTML =
+        '<div class="mempty"><p>Your book is empty</p>' +
+        "<small>Add a habit and it shows up here, one tap from done.</small></div>";
+      return;
+    }
+
+    if (!mobDay || cols.indexOf(mobDay) < 0) {
+      mobDay = cols.indexOf(TODAY()) >= 0 ? TODAY() : cols[cols.length - 1];
+    }
+
+    /* --- date strip --- */
+    const changed = strip.getAttribute("data-day") !== mobDay;
+    const keep = strip.scrollLeft;
+    strip.innerHTML = cols
+      .map((k) => {
+        const d = fromKey(k);
+        const s = mobStats(k);
+        const cls =
+          "mday" +
+          (k === mobDay ? " is-on" : "") +
+          (k === TODAY() ? " is-today" : "") +
+          (k > TODAY() ? " is-future" : "");
+        return (
+          '<button type="button" class="' +
+          cls +
+          '" data-mday="' +
+          k +
+          '" aria-pressed="' +
+          (k === mobDay) +
+          '" aria-label="' +
+          esc(fmtLong(k)) +
+          '">' +
+          '<span class="mday-dow">' +
+          DOW[d.getDay()].slice(0, 2) +
+          "</span>" +
+          '<span class="mday-num">' +
+          d.getDate() +
+          "</span>" +
+          '<span class="mday-bar"><i style="width:' +
+          s.pct +
+          '%"></i></span>' +
+          "</button>"
+        );
+      })
+      .join("");
+    strip.setAttribute("data-day", mobDay);
+    strip.scrollLeft = changed ? mobScrollTarget(strip) : keep;
+
+    /* --- header --- */
+    const s = mobStats(mobDay);
+    $("#mobDate").textContent = fmtLong(mobDay);
+    $("#mobSub").textContent =
+      s.total && s.done === s.total
+        ? "all " + s.total + " done ✓"
+        : s.done + " of " + s.total + " done";
+
+    /* --- one big row per habit --- */
+    list.innerHTML = S.habits
+      .map((h) => {
+        const on = isDone(mobDay, h.id);
+        const st = streakOf(h.id);
+        return (
+          '<div class="mhabit' +
+          (on ? " on" : "") +
+          '" data-h="' +
+          h.id +
+          '" data-c="' +
+          colOf(h.color) +
+          '">' +
+          '<span class="mhabit-emoji">' +
+          esc(h.emoji || "✦") +
+          "</span>" +
+          '<span class="mhabit-meta">' +
+          '<span class="mhabit-name">' +
+          esc(h.name) +
+          "</span>" +
+          '<span class="mhabit-sub">' +
+          (st ? "<b>🔥 " + st + "d</b> · " : "") +
+          pctOf(h.id, range) +
+          "%" +
+          "</span>" +
+          "</span>" +
+          '<button type="button" class="mhabit-menu" data-menu="' +
+          h.id +
+          '" aria-label="Options for ' +
+          esc(h.name) +
+          '">⋯</button>' +
+          '<button type="button" class="mstamp' +
+          (on ? " on" : "") +
+          '" data-h="' +
+          h.id +
+          '" data-d="' +
+          mobDay +
+          '" aria-pressed="' +
+          on +
+          '" aria-label="' +
+          esc(fmtLong(mobDay) + " — " + h.name) +
+          '">' +
+          '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3.4" ' +
+          'stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg>' +
+          "</button>" +
+          "</div>"
+        );
+      })
+      .join("");
+  }
+
   /** completion % for a habit across the active range */
   function pctOf(hid, days) {
     const all = sortedCols().filter((k) => k <= TODAY());
@@ -865,10 +1014,22 @@
       return;
     }
 
-    // Pick a window that fills the card. Cells are capped at 18px + 3px gap = 21px
-    // per week column, so the card never overflows (it would just scroll).
+    // Pick a window that fills the card. Desktop cells cap at 18px + 3px gap,
+    // so the card never overflows; on a phone the labels are narrower and the
+    // cells flex, so the same maths with smaller minimums fills the width.
     const wrapW = host.clientWidth || 900;
-    const weeks = fixed || clamp(Math.floor((wrapW - 188) / 21), 12, 52);
+    const narrow = window.matchMedia("(max-width: 640px)").matches;
+    const labw = narrow ? 0 : 158;
+    const doww = narrow ? 14 : 20;
+    const gap = narrow ? 0 : 10;
+    const step = narrow ? 12 : 21;
+    const weeks =
+      fixed ||
+      clamp(
+        Math.floor((wrapW - labw - doww - gap) / step),
+        narrow ? 10 : 12,
+        narrow ? 26 : 52,
+      );
     $("#heatWeeks").textContent =
       weeks === 52 ? "the last 52 weeks" : "the last " + weeks + " weeks";
 
@@ -937,29 +1098,33 @@
       '<i data-c="sage"></i><i data-c="lilac"></i>' +
       '<i data-c="clay"></i><span>more</span></div>';
 
-    $$(".heat-cell", host).forEach((cell) => {
-      cell.addEventListener("mouseenter", () => {
-        const k = cell.getAttribute("data-d");
-        const h = habitById(cell.getAttribute("data-h"));
-        if (!h) return;
-        const done = isDone(k, h.id);
-        const r = cell.getBoundingClientRect();
-        showTip(
-          '<span class="tt-d">' +
-            fmtLong(k) +
-            '</span><span class="tt-r" data-c="' +
-            colOf(h.color) +
-            '"><i></i>' +
-            esc(h.emoji + " " + h.name) +
-            " — <b>" +
-            (done ? "stamped" : "not stamped") +
-            "</b></span>",
-          r.left + r.width / 2,
-          r.top,
-        );
+    // Hover tooltips only where a real pointer exists — on touch the synthetic
+    // mouseenter fires on tap and the tooltip then sticks over the chart.
+    if (window.matchMedia("(hover: hover) and (pointer: fine)").matches) {
+      $$(".heat-cell", host).forEach((cell) => {
+        cell.addEventListener("mouseenter", () => {
+          const k = cell.getAttribute("data-d");
+          const h = habitById(cell.getAttribute("data-h"));
+          if (!h) return;
+          const done = isDone(k, h.id);
+          const r = cell.getBoundingClientRect();
+          showTip(
+            '<span class="tt-d">' +
+              fmtLong(k) +
+              '</span><span class="tt-r" data-c="' +
+              colOf(h.color) +
+              '"><i></i>' +
+              esc(h.emoji + " " + h.name) +
+              " — <b>" +
+              (done ? "stamped" : "not stamped") +
+              "</b></span>",
+            r.left + r.width / 2,
+            r.top,
+          );
+        });
+        cell.addEventListener("mouseleave", hideTip);
       });
-      cell.addEventListener("mouseleave", hideTip);
-    });
+    }
   }
 
   /* ---------------------------------------------------------
@@ -1009,6 +1174,7 @@
   function doRender() {
     renderStats();
     renderGrid();
+    renderMobile();
     renderTrend();
     renderBars();
     renderHeat();
@@ -1032,6 +1198,11 @@
       btn.classList.add("just");
     }
     renderStats();
+    if (window.matchMedia("(max-width: 640px)").matches) renderMobile();
+    const ms = document.querySelector(
+      '.mstamp[data-h="' + hid + '"][data-d="' + k + '"]',
+    );
+    if (ms) ms.classList.add("just");
     scheduleCharts();
   }
 
@@ -1133,7 +1304,8 @@
      11. Popover plumbing
      --------------------------------------------------------- */
   const pop = $("#addDayPop"),
-    dataPop = $("#dataPop");
+    dataPop = $("#dataPop"),
+    habitMenuPop = $("#habitMenuPop");
   let openPop = null;
 
   function place(popEl, anchor) {
@@ -1180,6 +1352,7 @@
   function closePop() {
     pop.hidden = true;
     dataPop.hidden = true;
+    habitMenuPop.hidden = true;
     openPop = null;
     $("#addDayBtn").setAttribute("aria-expanded", "false");
     $("#dataBtn").setAttribute("aria-expanded", "false");
@@ -1203,6 +1376,79 @@
       closePop();
       closeModal();
     }
+  });
+
+  /* ---------------------------------------------------------
+     11b. Mobile checklist interaction
+     --------------------------------------------------------- */
+  const mobBoard = $("#mobileBoard");
+  let menuHabitId = null;
+
+  function openHabitMenu(hid, anchor) {
+    const h = habitById(hid);
+    if (!h) return;
+    closePop();
+    menuHabitId = hid;
+    $("#habitMenuTitle").textContent = (h.emoji || "✦") + "  " + h.name;
+    habitMenuPop.hidden = false;
+    openPop = "habit";
+    place(habitMenuPop, anchor);
+  }
+
+  if (mobBoard) {
+    mobBoard.addEventListener("click", (e) => {
+      const dayBtn = e.target.closest("[data-mday]");
+      if (dayBtn) {
+        mobDay = dayBtn.getAttribute("data-mday");
+        renderMobile();
+        return;
+      }
+      const menu = e.target.closest("[data-menu]");
+      if (menu) {
+        e.stopPropagation(); // don't let the document handler close it again
+        openHabitMenu(menu.getAttribute("data-menu"), menu);
+        return;
+      }
+      const stamp = e.target.closest(".mstamp");
+      const row = e.target.closest(".mhabit");
+      const hid = stamp
+        ? stamp.getAttribute("data-h")
+        : row
+          ? row.getAttribute("data-h")
+          : null;
+      if (!hid) return;
+      applyCell(mobDay, hid, !isDone(mobDay, hid));
+    });
+
+    const backToToday = $("#mobToday");
+    if (backToToday) {
+      backToToday.addEventListener("click", () => {
+        const cols = sortedCols();
+        mobDay = cols.indexOf(TODAY()) >= 0 ? TODAY() : cols[cols.length - 1];
+        renderMobile();
+      });
+    }
+  }
+
+  $("#mAddHabit").addEventListener("click", openHabitModal);
+
+  $("#habitMenuDelete").addEventListener("click", () => {
+    const h = habitById(menuHabitId);
+    closePop();
+    if (!h) return;
+    if (
+      !confirm(
+        'Remove "' +
+          h.name +
+          '" from the book?\n\nIts stamps stay in your backup data, but the row disappears.',
+      )
+    )
+      return;
+    S.habits = S.habits.filter((x) => x.id !== h.id);
+    save();
+    mobDay = null;
+    doRender();
+    toast(h.emoji + " " + h.name + " removed");
   });
 
   /* quick chips + confirm for a new column */
@@ -1438,6 +1684,7 @@
       renderTrend();
       renderBars();
       renderGrid();
+      renderMobile();
     }),
   );
 
@@ -1569,12 +1816,15 @@
 
   window.addEventListener("beforeunload", saveNow);
 
-  // the trend chart's viewBox tracks its container, so redraw on resize
+  // the trend chart's viewBox tracks its container, so redraw on resize —
+  // and re-evaluate the mobile/desktop switch if the window was dragged
   let rzT = null;
   window.addEventListener("resize", () => {
     clearTimeout(rzT);
     rzT = setTimeout(() => {
       renderTrend();
+      renderHeat();
+      renderMobile();
     }, 160);
   });
 
